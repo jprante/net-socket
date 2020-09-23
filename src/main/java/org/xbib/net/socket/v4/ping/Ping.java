@@ -5,8 +5,7 @@ import org.xbib.net.socket.NetworkUnreachableException;
 import org.xbib.net.socket.v4.SocketFactory;
 import org.xbib.net.socket.v4.datagram.DatagramPacket;
 import org.xbib.net.socket.v4.datagram.DatagramSocket;
-import org.xbib.net.socket.v4.ip.Packet;
-
+import org.xbib.net.socket.v4.icmp.Packet;
 import java.io.Closeable;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -54,10 +53,6 @@ public class Ping implements Runnable, Closeable {
         return metric;
     }
 
-    public DatagramSocket getPingSocket() {
-        return datagramSocket;
-    }
-
     public boolean isFinished() {
         return closed;
     }
@@ -69,7 +64,6 @@ public class Ping implements Runnable, Closeable {
     }
 
     public void stop() throws InterruptedException {
-        closed = true;
         if (thread != null) {
             thread.interrupt();
         }
@@ -78,8 +72,9 @@ public class Ping implements Runnable, Closeable {
 
     @Override
     public void close() throws IOException {
-        if (getPingSocket() != null) {
-            getPingSocket().close();
+        if (datagramSocket != null) {
+            closed = true;
+            datagramSocket.close();
         }
     }
 
@@ -99,17 +94,19 @@ public class Ping implements Runnable, Closeable {
     }
 
     public void execute(int id,
-                        Inet4Address addr,
+                        Inet4Address inet4Address,
                         int sequenceNumber,
                         int count,
                         long interval)
             throws InterruptedException, NetworkUnreachableException {
+        if (inet4Address == null) {
+            return;
+        }
         metric = new PingMetric(count, interval);
         addPingReplyListener(metric);
-        final DatagramSocket socket = getPingSocket();
         for(int i = sequenceNumber; i < sequenceNumber + count; i++) {
-            final PingRequest request = new PingRequest(id, i);
-            request.send(socket, addr);
+            PingRequest request = new PingRequest(id, i);
+            int rc = request.send(datagramSocket, inet4Address);
             Thread.sleep(interval);
         }
     }
@@ -117,12 +114,13 @@ public class Ping implements Runnable, Closeable {
     @Override
     public void run() {
         try {
-            final DatagramPacket datagram = new DatagramPacket(65535);
+            DatagramPacket datagram = new DatagramPacket(65535);
             while (!isFinished()) {
-                getPingSocket().receive(datagram);
-                final long received = System.nanoTime();
-                final org.xbib.net.socket.v4.icmp.Packet packet = new org.xbib.net.socket.v4.icmp.Packet(getPayload(datagram));
-                final PingResponse echoReply = packet.getType() == org.xbib.net.socket.v4.icmp.Packet.Type.EchoReply ? new PingResponse(packet, received) : null;
+                int rc = datagramSocket.receive(datagram);
+                long received = System.nanoTime();
+                Packet packet = new Packet(getPayload(datagram));
+                PingResponse echoReply = packet.getType() == Packet.Type.EchoReply ?
+                        new PingResponse(packet, received) : null;
                 if (echoReply != null && echoReply.isValid()) {
                     logger.log(Level.INFO, String.format("%d bytes from %s: tid=%d icmp_seq=%d time=%.3f ms%n",
                         echoReply.getPacketLength(),
@@ -135,13 +133,13 @@ public class Ping implements Runnable, Closeable {
                     }
                 }
             }
-        } catch(final Throwable e) {
+        } catch (Throwable e) {
             throwable.set(e);
-            e.printStackTrace();
+            logger.log(Level.SEVERE, e.getMessage(), e);
         }
     }
 
     private ByteBuffer getPayload(final DatagramPacket datagram) {
-        return new Packet(datagram.getContent()).getPayload();
+        return new org.xbib.net.socket.v4.ip.Packet(datagram.getContent()).getPayload();
     }
 }

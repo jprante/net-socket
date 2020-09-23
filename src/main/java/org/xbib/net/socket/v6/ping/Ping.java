@@ -6,11 +6,9 @@ import org.xbib.net.socket.v6.SocketFactory;
 import org.xbib.net.socket.v6.datagram.DatagramPacket;
 import org.xbib.net.socket.v6.datagram.DatagramSocket;
 import org.xbib.net.socket.v6.icmp.Packet;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.Inet6Address;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,15 +25,13 @@ public class Ping implements Runnable, Closeable {
 
     private final DatagramSocket datagramSocket;
 
-    private final AtomicReference<Throwable> throwable;
-
-    private final Metric metric;
-
     private final List<PingResponseListener> listeners;
+
+    private volatile boolean closed;
 
     private Thread thread;
 
-    private volatile boolean closed;
+    private PingMetric metric;
 
     public Ping(int id) throws Exception {
         this(SocketFactory.createDatagramSocket(DatagramSocket.IPPROTO_ICMPV6, id));
@@ -43,14 +39,12 @@ public class Ping implements Runnable, Closeable {
 
     public Ping(DatagramSocket pingSocket) {
         datagramSocket = pingSocket;
-        this.throwable = new AtomicReference<>(null);
-        this.metric = new Metric();
         this.listeners = new ArrayList<>();
         this.closed = false;
     }
 
-    public DatagramSocket getPingSocket() {
-        return datagramSocket;
+    public Metric getMetric() {
+        return metric;
     }
 
     public int getCount() {
@@ -62,24 +56,23 @@ public class Ping implements Runnable, Closeable {
     }
 
     public void start() {
-        thread = new Thread(this, "PingThreadTest:PingListener");
+        thread = new Thread(this, "PingThread:PingListener");
         thread.setDaemon(true);
         thread.start();
     }
 
     public void stop() throws InterruptedException {
-        closed = true;
         if (thread != null) {
             thread.interrupt();
-            //m_thread.join();
         }
         thread = null;
     }
 
     @Override
     public void close() throws IOException {
-        if (getPingSocket() != null) {
-            getPingSocket().close();
+        if (datagramSocket != null) {
+            closed = true;
+            datagramSocket.close();
         }
     }
 
@@ -91,26 +84,27 @@ public class Ping implements Runnable, Closeable {
         listeners.add(listener);
     }
 
-    public PingMetric execute(int id, Inet6Address addr) throws InterruptedException, NetworkUnreachableException {
+    public void execute(int id, Inet6Address addr) throws InterruptedException, NetworkUnreachableException {
         Thread t = new Thread(this);
         t.start();
-        return execute(id, addr, 1, 10, 1000);
+        execute(id, addr, 1, 10, 1000);
     }
 
-    public PingMetric execute(int id,
-                              Inet6Address addr,
-                              int sequenceNumber,
-                              int count,
-                              long interval) throws InterruptedException, NetworkUnreachableException {
-        PingMetric metric = new PingMetric(count, interval);
+    public void execute(int id,
+                        Inet6Address inet6Address,
+                        int sequenceNumber,
+                        int count,
+                        long interval) throws InterruptedException, NetworkUnreachableException {
+        if (inet6Address == null) {
+            return;
+        }
+        metric = new PingMetric(count, interval);
         addPingReplyListener(metric);
-        DatagramSocket socket = getPingSocket();
         for (int i = sequenceNumber; i < sequenceNumber + count; i++) {
             PingRequest request = new PingRequest(id, i);
-            request.send(socket, addr);
+            int rc = request.send(datagramSocket, inet6Address);
             Thread.sleep(interval);
         }
-        return metric;
     }
 
     @Override
@@ -118,12 +112,12 @@ public class Ping implements Runnable, Closeable {
         try {
             DatagramPacket datagram = new DatagramPacket(65535);
             while (!isFinished()) {
-                getPingSocket().receive(datagram);
-                final long received = System.nanoTime();
-                final Packet icmpPacket = new Packet(getPayload(datagram));
-                final PingResponse echoReply = icmpPacket.getType() == Packet.Type.EchoReply ? new PingResponse(icmpPacket, received) : null;
+                int rc = datagramSocket.receive(datagram);
+                long received = System.nanoTime();
+                Packet packet = new Packet(datagram.getContent());
+                PingResponse echoReply = packet.getType() == Packet.Type.EchoReply ?
+                        new PingResponse(packet, received) : null;
                 if (echoReply != null && echoReply.isValid()) {
-                    // 64 bytes from 127.0.0.1: icmp_seq=0 time=0.069 ms
                     logger.log(Level.INFO, String.format("%d bytes from [%s]: tid=%d icmp_seq=%d time=%.3f ms%n",
                         echoReply.getPacketLength(),
                         datagram.getAddress().getHostAddress(),
@@ -135,13 +129,8 @@ public class Ping implements Runnable, Closeable {
                     }
                 }
             }
-        } catch(final Throwable e) {
-            throwable.set(e);
-            e.printStackTrace();
+        } catch (Throwable e) {
+            logger.log(Level.SEVERE, e.getMessage(), e);
         }
-    }
-
-    private ByteBuffer getPayload(final DatagramPacket datagram) {
-        return datagram.getContent();
     }
 }

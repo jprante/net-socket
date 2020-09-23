@@ -69,16 +69,20 @@ public class DatagramPacket implements Addressable {
     public String toString() {
         StringBuilder buf = new StringBuilder();
         buf.append("Address: ");
-        buf.append(addressable.getAddress());
+        if (addressable != null) {
+            buf.append(addressable.getAddress());
+        }
         buf.append(" Port: ");
-        buf.append(addressable.getPort());
+        if (addressable != null) {
+            buf.append(addressable.getPort());
+        }
         buf.append("\nData: ");
         ByteBuffer data = byteBuffer.duplicate();
         buf.append(data.limit());
         buf.append(" Bytes\n");
-        final int bytesPerRow = 4;
-        final int limit = data.limit();
-        final int rows = (limit + bytesPerRow) / bytesPerRow; 
+        int bytesPerRow = 256;
+        int limit = data.limit();
+        int rows = (limit + bytesPerRow) / bytesPerRow;
         int index = 0;
         for(int i = 0; i < rows && index < limit; i++) {
             for(int j = 0; j < bytesPerRow && index < limit; j++) {

@@ -37,7 +37,7 @@ class PingRequest extends EchoPacket {
         return super.toDatagramPacket(destinationAddress);
     }
 
-    public void send(DatagramSocket socket, Inet6Address addr) throws NetworkUnreachableException {
-        socket.send(toDatagramPacket(addr));
+    public int send(DatagramSocket socket, Inet6Address addr) throws NetworkUnreachableException {
+        return socket.send(toDatagramPacket(addr));
     }
 }

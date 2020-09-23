@@ -2,7 +2,6 @@ package org.xbib.net.socket.v4.ping;
 
 import org.xbib.net.socket.v4.icmp.EchoPacket;
 import org.xbib.net.socket.v4.icmp.Packet;
-
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 

@@ -9,11 +9,17 @@ import java.util.logging.Logger;
 
 class PingTest {
 
+    private static final Logger logger = Logger.getLogger(PingTest.class.getName());
+
     @Test
     void ping() throws Exception {
-        Ping ping = new Ping(0);
-        ping.execute(1234, (Inet4Address) Inet4Address.getByName("localhost"));
-        ping.close();
-        Logger.getAnonymousLogger().log(Level.INFO, ping.getMetric().getSummary(TimeUnit.MILLISECONDS));
+        Inet4Address address = (Inet4Address) Inet4Address.getByName("www.google.de");
+        if (address != null) {
+            Ping ping = new Ping(1234);
+            logger.log(Level.INFO, "address=" + address);
+            ping.execute(1234, address);
+            logger.log(Level.INFO, ping.getMetric().getSummary(TimeUnit.MILLISECONDS));
+            ping.close();
+        }
     }
 }

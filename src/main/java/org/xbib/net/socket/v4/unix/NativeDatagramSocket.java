@@ -26,13 +26,19 @@ public class NativeDatagramSocket implements DatagramSocket, AutoCloseable {
 
     private static final int IP_TOS = 1;
 
-    private int socket;
+    private final int socket;
+
+    private volatile boolean closed;
 
     public NativeDatagramSocket(int type, int protocol, int port) {
         try {
             this.socket = socket(AF_INET, type, protocol);
+            if (socket < 0) {
+                throw new IllegalStateException("socket < 0");
+            }
             SocketStructure socketStructure = new SocketStructure(port);
             bind(socket, socketStructure, socketStructure.size());
+            closed = false;
         } catch (LastErrorException e) {
             if (e.getMessage().contains("[13]")) {
                 logger.log(Level.SEVERE, "Check if sysctl -w net.ipv4.ping_group_range=\"0 65535\" and check for security:\n" +
@@ -58,55 +64,58 @@ public class NativeDatagramSocket implements DatagramSocket, AutoCloseable {
     public native String strerror(int errnum);
 
     @Override
-    public int getSocket() {
-        return socket;
-    }
-
-    @Override
-    public void setTrafficClass(final int tc) throws IOException {
-        final IntByReference tc_ptr = new IntByReference(tc);
+    public int setTrafficClass(final int tc) throws IOException {
+        if (closed) {
+            return -1;
+        }
+        IntByReference ptr = new IntByReference(tc);
         try {
-            setsockopt(getSocket(), IPPROTO_IP, IP_TOS, tc_ptr.getPointer(), Native.POINTER_SIZE);
+            return setsockopt(socket, IPPROTO_IP, IP_TOS, ptr.getPointer(), Native.POINTER_SIZE);
         } catch (final LastErrorException e) {
             throw new IOException("setsockopt: " + strerror(e.getErrorCode()));
         }
     }
 
     @Override
-    public void allowFragmentation(final boolean frag) throws IOException {
-        allowFragmentation(IPPROTO_IP, IP_MTU_DISCOVER, frag);
+    public int allowFragmentation(boolean frag) throws IOException {
+        return allowFragmentation(IPPROTO_IP, IP_MTU_DISCOVER, frag);
     }
 
-    private void allowFragmentation(final int level, final int option_name, final boolean frag) throws IOException {
-        final int socket = getSocket();
-        if (socket < 0) {
-            throw new IOException("Invalid socket!");
+    private int allowFragmentation(int level, int option_name, boolean frag) throws IOException {
+        if (closed) {
+            return -1;
         }
-        final IntByReference dontfragment = new IntByReference(frag ? 0 : 1);
+        IntByReference dontfragment = new IntByReference(frag ? 0 : 1);
         try {
-            setsockopt(socket, level, option_name, dontfragment.getPointer(), Native.POINTER_SIZE);
+            return setsockopt(socket, level, option_name, dontfragment.getPointer(), Native.POINTER_SIZE);
         } catch (final LastErrorException e) {
             throw new IOException("setsockopt: " + strerror(e.getErrorCode()));
         }
     }
 
     @Override
-    public int receive(DatagramPacket p) {
+    public int receive(DatagramPacket datagramPacket) {
+        if (closed) {
+            return -1;
+        }
         SocketStructure in_addr = new SocketStructure();
         int[] szRef = new int[]{in_addr.size()};
-        ByteBuffer buf = p.getContent();
-        int n = recvfrom(getSocket(), buf, buf.capacity(), 0, in_addr, szRef);
-        p.setLength(n);
-        p.setAddressable(in_addr);
+        ByteBuffer buf = datagramPacket.getContent();
+        int n = recvfrom(socket, buf, buf.capacity(), 0, in_addr, szRef);
+        datagramPacket.setLength(n);
+        datagramPacket.setAddressable(in_addr);
         return n;
     }
 
     @Override
-    public int send(DatagramPacket p) throws NetworkUnreachableException {
-        SocketStructure destAddr = new SocketStructure(p.getAddress(), p.getPort());
-        ByteBuffer buf = p.getContent();
+    public int send(DatagramPacket datagramPacket) throws NetworkUnreachableException {
+        if (closed) {
+            return -1;
+        }
+        SocketStructure destAddr = new SocketStructure(datagramPacket.getAddress(), datagramPacket.getPort());
+        ByteBuffer buf = datagramPacket.getContent();
         try {
-            return sendto(getSocket(), buf, buf.remaining(), 0, destAddr, destAddr.size());
+            return sendto(socket, buf, buf.remaining(), 0, destAddr, destAddr.size());
         } catch (LastErrorException e) {
             if (e.getMessage().contains("[101]")) {
                 throw new NetworkUnreachableException();
@@ -117,6 +126,7 @@ public class NativeDatagramSocket implements DatagramSocket, AutoCloseable {
 
     @Override
     public void close() {
-        close(getSocket());
+        closed = true;
+        close(socket);
     }
 }

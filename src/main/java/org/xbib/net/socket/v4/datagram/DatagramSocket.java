@@ -22,14 +22,11 @@ public interface DatagramSocket extends Closeable {
 
     int IPV6_DONTFRAG = 62;
 
-    int getSocket();
+    int allowFragmentation(boolean frag) throws IOException;
 
-    void allowFragmentation(boolean frag) throws IOException;
+    int setTrafficClass(int tc) throws IOException;
 
-    void setTrafficClass(int tc) throws IOException;
+    int receive(DatagramPacket datagramPacket) throws UnknownHostException;
 
-    int receive(DatagramPacket p) throws UnknownHostException;
-
-    int send(DatagramPacket p) throws NetworkUnreachableException;
-
+    int send(DatagramPacket datagramPacket) throws NetworkUnreachableException;
 }
