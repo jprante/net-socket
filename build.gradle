@@ -1,0 +1,40 @@
+plugins {
+    id "de.marcphilipp.nexus-publish" version "0.4.0"
+    id "io.codearte.nexus-staging" version "0.21.1"
+    id "org.xbib.gradle.plugin.asciidoctor" version "1.5.6.0.1"
+}
+
+wrapper {
+    gradleVersion = "${project.property('gradle.wrapper.version')}"
+    distributionType = Wrapper.DistributionType.ALL
+}
+
+ext {
+    user = 'xbib'
+    name = 'net-socket'
+    description = 'Network sockets for Java'
+    inceptionYear = '2020'
+    url = 'https://github.com/' + user + '/' + name
+    scmUrl = 'https://github.com/' + user + '/' + name
+    scmConnection = 'scm:git:git://github.com/' + user + '/' + name + '.git'
+    scmDeveloperConnection = 'scm:git:ssh://git@github.com:' + user + '/' + name + '.git'
+    issueManagementSystem = 'Github'
+    issueManagementUrl = ext.scmUrl + '/issues'
+    licenseName = 'The Apache License, Version 2.0'
+    licenseUrl = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+}
+
+apply from: rootProject.file('gradle/ide/idea.gradle')
+apply from: rootProject.file('gradle/compile/java.gradle')
+apply from: rootProject.file('gradle/test/junit5.gradle')
+apply from: rootProject.file('gradle/documentation/asciidoc.gradle')
+apply from: rootProject.file('gradle/publish/publication.gradle')
+apply from: rootProject.file('gradle/publish/sonatype.gradle')
+
+
+dependencies {
+    implementation "net.java.dev.jna:jna:${project.property('jna.version')}"
+    implementation "org.apache.logging.log4j:log4j-core:${project.property('log4j.version')}"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${project.property('junit.version')}"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${project.property('junit.version')}"
+}
