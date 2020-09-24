@@ -2,12 +2,14 @@ package org.xbib.net.socket.v6;
 
 import com.sun.jna.Platform;
 import org.xbib.net.socket.v6.datagram.DatagramSocket;
+import java.lang.reflect.InvocationTargetException;
 
 public class SocketFactory {
 
     public static final int SOCK_DGRAM = Platform.isSolaris() ? 1 : 2;
 
-    public static DatagramSocket createDatagramSocket(int protocol, int port) throws Exception {
+    public static DatagramSocket createDatagramSocket(int protocol, int port)
+            throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
         Class<? extends DatagramSocket> implementationClass = Class.forName(getImplementationClassName())
                 .asSubclass(DatagramSocket.class);
         return implementationClass

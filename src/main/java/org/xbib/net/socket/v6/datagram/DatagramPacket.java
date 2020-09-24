@@ -27,6 +27,10 @@ public class DatagramPacket implements Addressable {
         this.addressable = addressable;
     }
 
+    public Addressable getAddressable() {
+        return addressable;
+    }
+
     public void setAddress(Inet6Address inetAddress, int port) {
         this.addressable = new Addressable() {
             @Override
@@ -39,10 +43,6 @@ public class DatagramPacket implements Addressable {
                 return port;
             }
         };
-    }
-
-    public Addressable getAddressable() {
-        return addressable;
     }
 
     public Inet6Address getAddress() {

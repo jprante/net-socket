@@ -32,7 +32,7 @@ public class PingRequest extends EchoPacket {
     @Override
     public DatagramPacket toDatagramPacket(Inet4Address destinationAddress) {
         ByteBuffer contentBuffer = getContentBuffer();
-        contentBuffer.putLong(Ping.COOKIE);
+        contentBuffer.putLong(Ping.PING_COOKIE);
         contentBuffer.putLong(System.nanoTime());
         return super.toDatagramPacket(destinationAddress);
     }

@@ -1,6 +1,9 @@
 package org.xbib.net.socket.v6.bsd;
 
-import static org.xbib.net.socket.v6.bsd.SocketStructure.AF_INET6;
+import static org.xbib.net.socket.v6.Constants.IPPROTO_IPV6;
+import static org.xbib.net.socket.v6.Constants.IPV6_DONTFRAG;
+import static org.xbib.net.socket.v6.Constants.IPV6_TCLASS;
+import static org.xbib.net.socket.v6.Constants.AF_INET6;
 import java.io.IOException;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
@@ -16,8 +19,6 @@ public class NativeDatagramSocket implements DatagramSocket, AutoCloseable {
     static {
         Native.register((String) null);
     }
-
-    private static final int IPV6_TCLASS = 36;
 
     private final int socket;
 
@@ -48,8 +49,8 @@ public class NativeDatagramSocket implements DatagramSocket, AutoCloseable {
     public native String strerror(int errnum);
 
     @Override
-    public int setTrafficClass(int tc) throws IOException {
-        IntByReference ptr = new IntByReference(tc);
+    public int setTrafficClass(int trafficClass) throws IOException {
+        IntByReference ptr = new IntByReference(trafficClass);
         try {
             return setsockopt(socket, IPPROTO_IPV6, IPV6_TCLASS, ptr.getPointer(), Native.POINTER_SIZE);
         } catch (LastErrorException e) {
@@ -58,17 +59,17 @@ public class NativeDatagramSocket implements DatagramSocket, AutoCloseable {
     }
 
     @Override
-    public int allowFragmentation(boolean frag) throws IOException {
+    public int setFragmentation(boolean frag) throws IOException {
         return allowFragmentation(IPPROTO_IPV6, IPV6_DONTFRAG, frag);
     }
 
-    private int allowFragmentation(int level, int option_name, boolean frag) throws IOException {
+    private int allowFragmentation(int level, int optionName, boolean frag) throws IOException {
         if (closed) {
             return -1;
         }
-        IntByReference dontfragment = new IntByReference(frag ? 0 : 1);
+        IntByReference ptr = new IntByReference(frag ? 0 : 1);
         try {
-            return setsockopt(socket, level, option_name, dontfragment.getPointer(), Native.POINTER_SIZE);
+            return setsockopt(socket, level, optionName, ptr.getPointer(), Native.POINTER_SIZE);
         } catch (LastErrorException e) {
             throw new IOException("setsockopt: " + strerror(e.getErrorCode()));
         }

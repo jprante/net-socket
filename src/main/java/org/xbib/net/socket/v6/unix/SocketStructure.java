@@ -1,6 +1,5 @@
 package org.xbib.net.socket.v6.unix;
 
-import com.sun.jna.Platform;
 import com.sun.jna.Structure;
 import org.xbib.net.socket.v6.Addressable;
 
@@ -9,14 +8,9 @@ import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.List;
 
-public class SocketStructure extends Structure implements Addressable {
+import static org.xbib.net.socket.v6.Constants.AF_INET6;
 
-    public static final int AF_INET6 =  Platform.isLinux() ? 10
-            : Platform.isMac() ? 30
-            : Platform.isWindows() ? 23
-            : Platform.isFreeBSD() ? 28
-            : Platform.isSolaris() ? 26
-            : -1;
+public class SocketStructure extends Structure implements Addressable {
 
     public short sin6_family;
 
@@ -33,7 +27,7 @@ public class SocketStructure extends Structure implements Addressable {
     }
 
     public SocketStructure(int port) {
-        this(AF_INET6, null, port);
+        this(null, port);
     }
 
     public SocketStructure(Inet6Address address, int port) {

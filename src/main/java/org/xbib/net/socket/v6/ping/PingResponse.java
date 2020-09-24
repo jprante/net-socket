@@ -17,11 +17,7 @@ public class PingResponse extends EchoPacket {
 
     public boolean isValid() {
         ByteBuffer content = getContentBuffer();
-        return content.limit() >= 16 && Ping.COOKIE == content.getLong(0);
-    }
-
-    public boolean isEchoReply() {
-    	return Type.EchoReply.equals(getType());
+        return content.limit() >= 16 && Ping.PING_COOKIE == content.getLong(0);
     }
 
     public long getSentTimeNanos() {

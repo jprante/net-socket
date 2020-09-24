@@ -1,5 +1,6 @@
 package org.xbib.net.socket.v4.bsd;
 
+import static org.xbib.net.socket.v4.Constants.AF_INET;
 import com.sun.jna.Structure;
 import org.xbib.net.socket.v4.Addressable;
 import java.net.Inet4Address;
@@ -8,8 +9,6 @@ import java.util.Arrays;
 import java.util.List;
 
 public class SocketStructure extends Structure implements Addressable {
-
-    public static final int AF_INET = 2;
 
     public byte sin_len;
 
@@ -36,7 +35,7 @@ public class SocketStructure extends Structure implements Addressable {
     public SocketStructure(int family, Inet4Address address, int port) {
         this.sin_family = (byte) (0xff & family);
         this.sin_zero = new byte[8];
-        this.sin_len = (byte) (0xff & 16);  // (byte) (0xff & size());
+        this.sin_len = (byte) (0xff & 16);
         setAddress(address);
         setPort(port);
     }

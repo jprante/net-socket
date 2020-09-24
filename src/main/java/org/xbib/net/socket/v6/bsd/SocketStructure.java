@@ -1,6 +1,6 @@
 package org.xbib.net.socket.v6.bsd;
 
-import com.sun.jna.Platform;
+import static org.xbib.net.socket.v6.Constants.AF_INET6;
 import com.sun.jna.Structure;
 import org.xbib.net.socket.v6.Addressable;
 import java.net.Inet6Address;
@@ -10,13 +10,6 @@ import java.util.Arrays;
 import java.util.List;
 
 public class SocketStructure extends Structure implements Addressable {
-
-    public static final int AF_INET6 =  Platform.isLinux() ? 10
-            : Platform.isMac() ? 30
-            : Platform.isWindows() ? 23
-            : Platform.isFreeBSD() ? 28
-            : Platform.isSolaris() ? 26
-            : -1;
 
     public byte sin6_len;
 

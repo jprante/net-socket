@@ -15,19 +15,18 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static org.xbib.net.socket.v4.Constants.IPPROTO_ICMP;
 
 public class Ping implements Runnable, Closeable {
 
     private static final Logger logger = Logger.getLogger(Ping.class.getName());
 
-    public static final long COOKIE = StandardCharsets.US_ASCII.encode("org.xbib").getLong(0);
+    public static final long PING_COOKIE = StandardCharsets.US_ASCII.encode("org.xbib").getLong(0);
 
     private final DatagramSocket datagramSocket;
-
-    private final AtomicReference<Throwable> throwable;
 
     private final List<PingResponseListener> listeners;
 
@@ -39,12 +38,11 @@ public class Ping implements Runnable, Closeable {
 
     public Ping(int id)
             throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
-        this(SocketFactory.createDatagramSocket(DatagramSocket.IPPROTO_ICMP, id));
+        this(SocketFactory.createDatagramSocket(IPPROTO_ICMP, id));
     }
 
     public Ping(DatagramSocket datagramSocket) {
         this.datagramSocket = datagramSocket;
-        this.throwable = new AtomicReference<>(null);
         this.listeners = new ArrayList<>();
         this.closed = false;
     }
@@ -53,7 +51,7 @@ public class Ping implements Runnable, Closeable {
         return metric;
     }
 
-    public boolean isFinished() {
+    public boolean isClosed() {
         return closed;
     }
 
@@ -63,7 +61,7 @@ public class Ping implements Runnable, Closeable {
         thread.start();
     }
 
-    public void stop() throws InterruptedException {
+    public void stop() {
         if (thread != null) {
             thread.interrupt();
         }
@@ -78,7 +76,7 @@ public class Ping implements Runnable, Closeable {
         }
     }
 
-    protected List<PingResponseListener> getListeners() {
+    public List<PingResponseListener> getListeners() {
         return listeners;
     }
 
@@ -115,26 +113,26 @@ public class Ping implements Runnable, Closeable {
     public void run() {
         try {
             DatagramPacket datagram = new DatagramPacket(65535);
-            while (!isFinished()) {
+            while (!isClosed()) {
                 int rc = datagramSocket.receive(datagram);
                 long received = System.nanoTime();
                 Packet packet = new Packet(getPayload(datagram));
-                PingResponse echoReply = packet.getType() == Packet.Type.EchoReply ?
-                        new PingResponse(packet, received) : null;
-                if (echoReply != null && echoReply.isValid()) {
-                    logger.log(Level.INFO, String.format("%d bytes from %s: tid=%d icmp_seq=%d time=%.3f ms%n",
-                        echoReply.getPacketLength(),
-                        datagram.getAddress().getHostAddress(),
-                        echoReply.getIdentifier(),
-                        echoReply.getSequenceNumber(),
-                        echoReply.elapsedTime(TimeUnit.MILLISECONDS)));
-                    for (PingResponseListener listener : getListeners()) {
-                        listener.onPingResponse(datagram.getAddress(), echoReply);
+                if (packet.getType() == Packet.Type.EchoReply) {
+                    PingResponse pingResponse = new PingResponse(packet, received);
+                    if (pingResponse.isValid()) {
+                        logger.log(Level.INFO, String.format("%d bytes from %s: tid=%d icmp_seq=%d time=%.3f ms%n",
+                                pingResponse.getPacketLength(),
+                                datagram.getAddress().getHostAddress(),
+                                pingResponse.getIdentifier(),
+                                pingResponse.getSequenceNumber(),
+                                pingResponse.elapsedTime(TimeUnit.MILLISECONDS)));
+                        for (PingResponseListener listener : getListeners()) {
+                            listener.onPingResponse(datagram.getAddress(), pingResponse);
+                        }
                     }
                 }
             }
         } catch (Throwable e) {
-            throwable.set(e);
             logger.log(Level.SEVERE, e.getMessage(), e);
         }
     }

@@ -14,7 +14,10 @@ import java.nio.ByteBuffer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static org.xbib.net.socket.v4.unix.SocketStructure.AF_INET;
+import static org.xbib.net.socket.v4.Constants.AF_INET;
+import static org.xbib.net.socket.v4.Constants.IPPROTO_IP;
+import static org.xbib.net.socket.v4.Constants.IP_MTU_DISCOVER;
+import static org.xbib.net.socket.v4.Constants.IP_TOS;
 
 public class NativeDatagramSocket implements DatagramSocket, AutoCloseable {
 
@@ -23,8 +26,6 @@ public class NativeDatagramSocket implements DatagramSocket, AutoCloseable {
     }
 
     private static final Logger logger = Logger.getLogger(NativeDatagramSocket.class.getName());
-
-    private static final int IP_TOS = 1;
 
     private final int socket;
 
@@ -77,7 +78,7 @@ public class NativeDatagramSocket implements DatagramSocket, AutoCloseable {
     }
 
     @Override
-    public int allowFragmentation(boolean frag) throws IOException {
+    public int setFragmentation(boolean frag) throws IOException {
         return allowFragmentation(IPPROTO_IP, IP_MTU_DISCOVER, frag);
     }
 

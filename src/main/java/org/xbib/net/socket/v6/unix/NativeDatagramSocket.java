@@ -12,7 +12,10 @@ import java.io.IOException;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
-import static org.xbib.net.socket.v6.unix.SocketStructure.AF_INET6;
+import static org.xbib.net.socket.v6.Constants.AF_INET6;
+import static org.xbib.net.socket.v6.Constants.IPPROTO_IPV6;
+import static org.xbib.net.socket.v6.Constants.IPV6_DONTFRAG;
+import static org.xbib.net.socket.v6.Constants.IPV6_TCLASS;
 
 public class NativeDatagramSocket implements DatagramSocket, AutoCloseable {
 
@@ -20,7 +23,6 @@ public class NativeDatagramSocket implements DatagramSocket, AutoCloseable {
         Native.register((String) null);
     }
 
-    private static final int IPV6_TCLASS = 67;
 
     private final int socket;
 
@@ -51,11 +53,11 @@ public class NativeDatagramSocket implements DatagramSocket, AutoCloseable {
     public native String strerror(int errnum);
 
     @Override
-    public int setTrafficClass(int tc) throws LastErrorException {
+    public int setTrafficClass(int trafficClass) throws LastErrorException {
         if (closed) {
             return -1;
         }
-        IntByReference tc_ptr = new IntByReference(tc);
+        IntByReference tc_ptr = new IntByReference(trafficClass);
         try {
             return setsockopt(socket, IPPROTO_IPV6, IPV6_TCLASS, tc_ptr.getPointer(), Native.POINTER_SIZE);
         } catch (LastErrorException e) {
@@ -64,7 +66,7 @@ public class NativeDatagramSocket implements DatagramSocket, AutoCloseable {
     }
 
     @Override
-    public int allowFragmentation(boolean frag) throws IOException {
+    public int setFragmentation(boolean frag) throws IOException {
         return allowFragmentation(IPPROTO_IPV6, IPV6_DONTFRAG, frag);
     }
 
@@ -95,13 +97,13 @@ public class NativeDatagramSocket implements DatagramSocket, AutoCloseable {
     }
 
     @Override
-    public int send(DatagramPacket p) throws NetworkUnreachableException {
+    public int send(DatagramPacket datagramPacket) throws NetworkUnreachableException {
         if (closed) {
             return -1;
         }
         try {
-            ByteBuffer buf = p.getContent();
-            SocketStructure destAddr = new SocketStructure(p.getAddress(), p.getPort());
+            ByteBuffer buf = datagramPacket.getContent();
+            SocketStructure destAddr = new SocketStructure(datagramPacket.getAddress(), datagramPacket.getPort());
             return sendto(socket, buf, buf.remaining(), 0, destAddr, destAddr.size());
         } catch (LastErrorException e) {
             if (e.getMessage().contains("[101]")) {

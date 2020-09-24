@@ -8,25 +8,11 @@ import java.net.UnknownHostException;
 
 public interface DatagramSocket extends Closeable {
 
-    int IPPROTO_IP = 0;
+    int setFragmentation(boolean frag) throws IOException;
 
-    int IPPROTO_IPV6 = 41;
+    int setTrafficClass(int trafficClass) throws IOException;
 
-    int IPPROTO_ICMP = 1;
+    int receive(DatagramPacket datagramPacket) throws UnknownHostException;
 
-    int IPPROTO_UDP = 17;
-
-    int IPPROTO_ICMPV6 = 58;
-
-    int IP_MTU_DISCOVER = 10;
-
-    int IPV6_DONTFRAG = 62;
-
-    int allowFragmentation(boolean frag) throws IOException;
-
-    int setTrafficClass(int tc) throws IOException;
-
-    int receive(DatagramPacket p) throws UnknownHostException;
-
-    int send(DatagramPacket p) throws NetworkUnreachableException;
+    int send(DatagramPacket datagramPacket) throws NetworkUnreachableException;
 }

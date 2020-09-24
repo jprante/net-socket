@@ -10,7 +10,9 @@ import java.io.IOException;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
-import static org.xbib.net.socket.v4.bsd.SocketStructure.AF_INET;
+import static org.xbib.net.socket.v4.Constants.AF_INET;
+import static org.xbib.net.socket.v4.Constants.IPPROTO_IP;
+import static org.xbib.net.socket.v4.Constants.IP_MTU_DISCOVER;
 
 public class NativeDatagramSocket implements DatagramSocket, AutoCloseable {
 
@@ -59,7 +61,7 @@ public class NativeDatagramSocket implements DatagramSocket, AutoCloseable {
     }
 
     @Override
-    public int allowFragmentation(boolean frag) throws IOException {
+    public int setFragmentation(boolean frag) throws IOException {
         return allowFragmentation(IPPROTO_IP, IP_MTU_DISCOVER, frag);
     }
 
